@@ -264,12 +264,14 @@ main(){
     add_cron_job_if_not_exists --cron-string "0 */4 * * *" \
                                --command "/usr/bin/find /var/log -type f -mtime +3 -exec rm -f {} \;"
 
+    log --info "Creating a CRON job for dated log cleanup."
+    add_cron_job_if_not_exists --cron-string "0 */4 * * *" \
+                               --command "/usr/bin/find /var/log -type f -exec bash -c 'file={}; suffix=${file##*-}; cutoff=$(date -d \"3 days ago\" +%Y%m%d%H); [[ $suffix =~ ^[0-9]{10}$ && $suffix < $cutoff ]] && rm -f \"\$file\"' \;"
 
-    log --info "Creating a CRON job to update the host at 2 am nightly."
-    add_cron_job_if_not_exists --cron-string "0 2 * * *" \
-                               --command "/usr/bin/dnf -y update --refresh && /usr/bin/dnf -y upgrade && /usr/bin/dnf clean all >> /var/log/dnf-cron.log 2>&1"
-
-
+    log --info "Creating a CRON job for nightly maintenance and cleanup."
+    add_cron_job_if_not_exists --cron-string "0 3 * * *" \
+                               --command "/usr/bin/dnf -y update --refresh && /usr/bin/dnf -y upgrade && /usr/bin/dnf clean all && /usr/bin/journalctl --vacuum-time=7d --vacuum-size=100M && rm -f /var/lib/rsyslog/imjournal.state* && systemctl restart rsyslog >> /var/log/maintenance.log 2>&1"
+                               
     log --info "Creating a CRON job to restart the Azure Monitor agent on a reoccuring basis."
     add_cron_job_if_not_exists --cron-string "*/15 * * * *" \
                                --command "/bin/systemctl restart azuremonitoragent"
@@ -279,8 +281,7 @@ main(){
 
     log --info "Cleaning up any existing logs, older than 3 days."
     find /var/log -type f -mtime +3 -exec rm -f {} \;
-
-
+    
 
     # Adjust systemd-journald settings to optimize log storage
     sed -i 's/#SystemMaxUse=/SystemMaxUse=200M/' /etc/systemd/journald.conf
