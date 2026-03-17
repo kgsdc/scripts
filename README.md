@@ -9,18 +9,6 @@
 
 Automation and deployment scripts for Linux and Windows: syslog/CEF collectors, Microsoft stack installers, firewall setup, and OneDrive file conversion.
 
----
-
-## Contents
-
-- [Quick start](#quick-start)
-- [Linux scripts](#linux-scripts)
-- [Ansible playbooks](#ansible-playbooks)
-- [PowerShell scripts](#powershell-scripts)
-- [Branch workflow](#branch-workflow)
-
----
-
 ## Quick start
 
 - **Linux:** Most scripts require `root`. Copy and run, or use Ansible for multi-host.
@@ -60,14 +48,28 @@ ansible-playbook -i inventory.yml ansible/bootstrap_syslog_enhanced.yml
 
 ---
 
-## PowerShell scripts
+## PowerShell scripts (manual run)
 
 | Script | Description |
 |--------|-------------|
 | **ConvertOldExcelFiles -OneDrive.ps1** | Converts `.xls` to `.xlsx` in OneDrive and moves originals to a local `converted_old` folder. |
 | **ConvertOldWordFiles -OneDrive.ps1** | Converts legacy Word formats in OneDrive and moves originals to a local folder. |
 
-Require Excel/Word installed and access to the OneDrive path.
+Require Excel/Word installed and access to the OneDrive path. For **Intune proactive remediations** (detect + remediate), use the scripts in **[intune-remediation](./intune-remediation/)**.
+
+---
+
+## Intune remediation scripts
+
+Detect/remediate script pairs for **Microsoft Intune** (Proactive remediations). Run in SYSTEM context; no user sign-in required.
+
+| Folder | Purpose |
+|--------|---------|
+| **[intune-remediation/](./intune-remediation/)** | How to use in Intune, assignments, encoding. |
+| **[intune-remediation/ConvertOldExcelFiles/](./intune-remediation/ConvertOldExcelFiles/)** | Detect `.xls` in OneDrive → convert to `.xlsx`, move originals to `converted_old`. |
+| **[intune-remediation/ConvertOldWordFiles/](./intune-remediation/ConvertOldWordFiles/)** | Detect `.doc` in OneDrive → convert to `.docx`, move originals to `converted_old`. |
+
+See **[intune-remediation/README.md](./intune-remediation/README.md)** for creating script packages, assigning to groups, and monitoring. Each subfolder has its own README.
 
 ---
 
