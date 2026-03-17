@@ -48,14 +48,9 @@ ansible-playbook -i inventory.yml ansible/bootstrap_syslog_enhanced.yml
 
 ---
 
-## PowerShell scripts (manual run)
+## PowerShell / Intune
 
-| Script | Description |
-|--------|-------------|
-| **ConvertOldExcelFiles -OneDrive.ps1** | Converts `.xls` to `.xlsx` in OneDrive and moves originals to a local `converted_old` folder. |
-| **ConvertOldWordFiles -OneDrive.ps1** | Converts legacy Word formats in OneDrive and moves originals to a local folder. |
-
-Require Excel/Word installed and access to the OneDrive path. For **Intune proactive remediations** (detect + remediate), use the scripts in **[intune-remediation](./intune-remediation/)**.
+**OneDrive Office file conversion** (legacy .xls/.doc/.ppt → .xlsx/.docx/.pptx): use the **Intune proactive remediation** scripts in **[intune-remediation/](./intune-remediation/)** (detect + remediate). They run as SYSTEM and handle all user OneDrive folders.
 
 ---
 
@@ -66,8 +61,7 @@ Detect/remediate script pairs for **Microsoft Intune** (Proactive remediations).
 | Folder | Purpose |
 |--------|---------|
 | **[intune-remediation/](./intune-remediation/)** | How to use in Intune, assignments, encoding. |
-| **[intune-remediation/ConvertOldExcelFiles/](./intune-remediation/ConvertOldExcelFiles/)** | Detect `.xls` in OneDrive → convert to `.xlsx`, move originals to `converted_old`. |
-| **[intune-remediation/ConvertOldWordFiles/](./intune-remediation/ConvertOldWordFiles/)** | Detect `.doc` in OneDrive → convert to `.docx`, move originals to `converted_old`. |
+| **[intune-remediation/ConvertOldOfficeFiles/](./intune-remediation/ConvertOldOfficeFiles/)** | One pack for all: detect `.xls`/`.doc`/`.ppt` in OneDrive → convert to `.xlsx`/`.docx`/`.pptx`, move originals to `converted_old`. |
 
 See **[intune-remediation/README.md](./intune-remediation/README.md)** for creating script packages, assigning to groups, and monitoring. Each subfolder has its own README.
 

@@ -1,15 +1,11 @@
 #!/usr/bin/env bash
 
-# Script Name: install_teams.sh
-# Description: Standalone script that installs Microsoft Teams on Ubuntu.
-#              Adds Microsoft GPG key and Teams repository, then installs the teams package.
-#
-# Usage: Run as root. Example: ./install_teams.sh
+# CIS L1 – Remediate: Run all CIS L1 Remediate scripts in order. Idempotent; safe to run repeatedly.
 
 set -euo pipefail
 
 # -----------------------------------------------------------------------------
-# Standalone helpers (no dependency on lib/)
+# Helpers
 # -----------------------------------------------------------------------------
 
 log() {
@@ -31,6 +27,8 @@ require_root() {
     fi
 }
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)
+
 # -----------------------------------------------------------------------------
 # Main
 # -----------------------------------------------------------------------------
@@ -38,16 +36,17 @@ require_root() {
 main() {
     require_root
 
-    log --info "Adding Microsoft GPG key and Teams repository."
-    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
-    echo "deb [arch=amd64] https://packages.microsoft.com/repos/ms-teams stable main" \
-        > /etc/apt/sources.list.d/teams.list
+    for remediate in Remediate-CIS-Updates.sh Remediate-CIS-Firewall.sh Remediate-CIS-Kernel.sh \
+                    Remediate-CIS-Password.sh Remediate-CIS-Audit.sh Remediate-CIS-DisableServices.sh \
+                    Remediate-CIS-ScreenLock.sh Remediate-CIS-SSH.sh; do
+        path="$SCRIPT_DIR/$remediate"
+        if [ -x "$path" ]; then
+            log --info "Running $remediate"
+            "$path" || log --warn "$remediate returned non-zero"
+        fi
+    done
 
-    log --info "Updating package lists and installing Microsoft Teams."
-    apt update
-    apt install -y teams
-
-    log --info "Microsoft Teams installation completed."
+    log --info "CIS L1 All: Remediation complete. Reboot recommended if kernel/sysctl changed."
 }
 
 main "$@"

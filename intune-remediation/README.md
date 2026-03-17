@@ -10,10 +10,10 @@ Proactive remediation script pairs (detect + remediate) for Microsoft Intune. Us
 
 1. In **Microsoft Intune admin center**: go to **Reports** → **Endpoint analytics** → **Proactive remediations**, or **Devices** → **Scripts** (depending on your tenant).
 2. Click **Create script package**.
-3. **Name**: e.g. `Convert Old Excel Files in OneDrive`.
-4. **Description**: Optional; e.g. "Detects and converts .xls to .xlsx in user OneDrive; moves originals to converted_old."
-5. **Detection script file**: Upload the `Detect-*.ps1` script for the remediation (e.g. `Detect-ConvertOldExcelFiles.ps1`).
-6. **Remediation script file**: Upload the matching `Remediate-*.ps1` script (e.g. `Remediate-ConvertOldExcelFiles.ps1`).
+3. **Name**: e.g. `Convert legacy Office files in OneDrive`.
+4. **Description**: Optional; e.g. "Detects and converts .xls/.doc/.ppt in OneDrive to .xlsx/.docx/.pptx; moves originals to converted_old."
+5. **Detection script file**: Upload the `Detect-*.ps1` script (e.g. `Detect-ConvertOldOfficeFiles.ps1`).
+6. **Remediation script file**: Upload the matching `Remediate-*.ps1` script (e.g. `Remediate-ConvertOldOfficeFiles.ps1`).
 7. Save.
 
 ### 2. Assign to a group
@@ -46,18 +46,17 @@ Proactive remediation script pairs (detect + remediate) for Microsoft Intune. Us
 
 | Folder | Purpose |
 |--------|---------|
-| [ConvertOldExcelFiles](./ConvertOldExcelFiles/) | Detect legacy `.xls` in OneDrive; convert to `.xlsx` and move originals to `converted_old`. |
-| [ConvertOldWordFiles](./ConvertOldWordFiles/) | Detect legacy `.doc` in OneDrive; convert to `.docx` and move originals to `converted_old`. |
+| [ConvertOldOfficeFiles](./ConvertOldOfficeFiles/) | **Windows (PowerShell)**: detects `.xls`, `.doc`, `.ppt` in OneDrive; converts to `.xlsx`/`.docx`/`.pptx` and moves originals to `converted_old`. |
+| [CIS-L1-Ubuntu](./CIS-L1-Ubuntu/) | **Linux (Bash)**: CIS Level 1 Workstation controls for Ubuntu 22.04/24.04 (updates, firewall, kernel, password, audit, screen lock, SSH, disable services). Idempotent; schedule Remediate scripts directly (Linux has no auto-remediate on detect). |
 
-Each subfolder contains a **Detect** and **Remediate** script plus a short README.
+Each subfolder contains **Detect** and **Remediate** script(s) plus a short README.
 
 ---
 
 ## Requirements
 
-- **Excel** (for ConvertOldExcelFiles): Microsoft Excel installed on the device; conversion uses the Excel COM object.
-- **Word** (for ConvertOldWordFiles): Microsoft Word installed on the device; conversion uses the Word COM object.
-- **OneDrive**: Scripts run as SYSTEM and enumerate `C:\Users\<user>\OneDrive*` to find all user OneDrive folders. No user sign-in is required for detection/remediation to run.
+- **Office apps**: Excel (for .xls), Word (for .doc), and/or PowerPoint (for .ppt) as needed; conversion uses COM. Only the apps for file types you actually have need to be installed.
+- **OneDrive**: Scripts run as SYSTEM and enumerate `C:\Users\<user>\OneDrive`* to find all user OneDrive folders. No user sign-in is required for detection/remediation to run.
 - **Windows**: Tested on Windows 10/11.
 
 ---
@@ -66,3 +65,4 @@ Each subfolder contains a **Detect** and **Remediate** script plus a short READM
 
 - [Use remediations in Microsoft Intune](https://learn.microsoft.com/en-us/mem/intune/fundamentals/remediations)
 - [Proactive remediations - Create script package](https://learn.microsoft.com/en-us/mem/analytics/proactive-remediations)
+

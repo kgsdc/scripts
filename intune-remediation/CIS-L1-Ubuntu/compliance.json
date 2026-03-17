@@ -1,0 +1,11 @@
+{
+  "Rules": [
+    {
+      "Setting": "cis_workstation_essentials",
+      "Operator": "Equals",
+      "DataType": "String",
+      "Value": "Compliant",
+      "MoreInfoUrl": "https://www.cisecurity.org/benchmark/ubuntu_linux"
+    }
+  ]
+}
