@@ -1,39 +1,60 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Function to log messages
+# Script Name: install_intune.sh
+# Description: Standalone script that installs the Microsoft Intune portal on Ubuntu.
+#              Adds Microsoft package signing key and repository, then installs intune-portal.
+#
+# Usage: Run as root. Example: ./install_intune.sh
+
+set -euo pipefail
+
+# -----------------------------------------------------------------------------
+# Standalone helpers (no dependency on lib/)
+# -----------------------------------------------------------------------------
+
 log() {
-    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*"
+    local level="[INFO]"
+    local message=""
+    case "${1:-}" in
+        -i|--info)  level="[INFO]";  message="${*:2}" ;;
+        -w|--warn)  level="[WARN]";  message="${*:2}" ;;
+        -e|--error) level="[ERROR]"; message="${*:2}" ;;
+        *)          level="[INFO]";  message="$*" ;;
+    esac
+    echo "$(date +'%Y-%m-%d %H:%M:%S') $level - $message"
 }
 
-# Ensure the script is run as root
-if [ "$(id -u)" != "0" ]; then
-   log "This script must be run as root" 1>&2
-   exit 1
-fi
+require_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "This script must be run as root" 1>&2
+        exit 1
+    fi
+}
 
-# Determine Ubuntu version
-UBUNTU_VERSION=$(lsb_release -rs)
-CODENAME=$(lsb_release -sc)
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
 
-# Download and add the Microsoft package signing key
-curl https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
-sudo install -o root -g root -m 644 microsoft.gpg /usr/share/keyrings/
+main() {
+    require_root
 
-# Add the package repository using interpolation for the Ubuntu version and codename
-echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/${UBUNTU_VERSION}/prod ${CODENAME} main" | sudo tee /etc/apt/sources.list.d/microsoft-ubuntu-${CODENAME}-prod.list > /dev/null
+    local ubuntu_version codename
+    ubuntu_version=$(lsb_release -rs)
+    codename=$(lsb_release -sc)
 
-# Remove the temporary GPG key file
-sudo rm microsoft.gpg
+    log --info "Adding Microsoft package signing key and repository."
+    curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor > microsoft.gpg
+    install -o root -g root -m 644 microsoft.gpg /usr/share/keyrings/microsoft.gpg
+    rm -f microsoft.gpg
 
-# Update the package lists
-sudo apt update
+    echo "deb [arch=amd64 signed-by=/usr/share/keyrings/microsoft.gpg] https://packages.microsoft.com/ubuntu/${ubuntu_version}/prod ${codename} main" \
+        | tee /etc/apt/sources.list.d/microsoft-ubuntu-${codename}-prod.list > /dev/null
 
-# Install the Microsoft Intune app
-sudo apt install -y intune-portal
+    log --info "Updating package lists and installing intune-portal."
+    apt update
+    apt install -y intune-portal
 
-if [ $? -eq 0 ]; then
-    log "Microsoft Intune app installed successfully."
-else
-    log "Failed to install the Microsoft Intune app."
-    exit 1
-fi
+    log --info "Microsoft Intune app installed successfully."
+}
+
+main "$@"

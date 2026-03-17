@@ -185,3 +185,26 @@ fabric.properties
 
 # idea folder, uncomment if you don't need it
 # .idea
+
+### macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+### Editor backups and swap
+*~
+*.swp
+*.swo
+*.swn
+.*.sw?
+
+### PowerShell
+*.ps1.bak
+*.ps1~
+Transcripts/
+
+### General temp and backup
+*.bak
+*.tmp
+*.temp
+.cache/

@@ -1,0 +1,20 @@
+# Example group_vars for [syslog_servers].
+# Copy to group_vars/syslog_servers.yml and set values (use ansible-vault for secrets).
+#
+# collector_type: ama   # or cef
+# workspace_id: ""      # required for cef
+# primary_key: ""      # required for cef
+#
+# Optional tuning (match script env vars):
+# disk_threshold_percent: 85
+# keep_kernels: 2
+# cleanup_days_ago: 7
+# cleanup_days_log: 3
+# cleanup_large_mb: 100
+# cleanup_docker: 0
+# dnf_installonly_limit: 2
+
+collector_type: ama
+disk_threshold_percent: 85
+keep_kernels: 2
+dnf_installonly_limit: 2

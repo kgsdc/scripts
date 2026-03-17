@@ -1,0 +1,23 @@
+# Example inventory for bootstrap_syslog_enhanced playbook.
+# Copy to inventory.yml and set your host(s). Use -i inventory.yml when running the playbook.
+#
+# ansible-playbook -i inventory.yml bootstrap_syslog_enhanced.yml
+# ansible-playbook -i inventory.yml bootstrap_syslog_enhanced.yml -e "collector_type=cef" -e "workspace_id=YOUR_ID" -e "primary_key=YOUR_KEY"
+
+all:
+  children:
+    syslog_servers:
+      hosts:
+        vmss-syslog-security-prod-use1-002000001:
+          ansible_host: 10.0.0.5   # optional if DNS/resolvable
+        # vmss-syslog-002:
+        #   ansible_host: 10.0.0.6
+      vars:
+        collector_type: ama
+        # For CEF only (uncomment and use vault or -e for secrets):
+        # collector_type: cef
+        # workspace_id: "{{ vault_workspace_id }}"
+        # primary_key: "{{ vault_primary_key }}"
+        disk_threshold_percent: 85
+        keep_kernels: 2
+        dnf_installonly_limit: 2

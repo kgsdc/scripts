@@ -1,0 +1,128 @@
+---
+# Playbook: Bootstrap syslog-enhanced (CEF/AMA collector, disk cleanup, cron jobs)
+# Based on bootstrap-syslog-enhanced.sh. Deploys the script and runs it with your vars.
+#
+# Usage:
+#   ansible-playbook -i inventory.yml bootstrap_syslog_enhanced.yml
+#   ansible-playbook -i inventory.yml bootstrap_syslog_enhanced.yml -e "collector_type=cef" -e "workspace_id=..." -e "primary_key=..."
+#
+# For CEF: set workspace_id, primary_key, and collector_type=cef (or use vault).
+# For AMA forwarder only: collector_type=ama (default).
+
+- name: Bootstrap syslog-enhanced on Linux hosts
+  hosts: syslog_servers
+  become: true
+  vars:
+    # Collector: 'ama' (Azure Sentinel Syslog AMA forwarder) or 'cef' (CEF collector)
+    collector_type: "{{ collector_type | default('ama') }}"
+    # For CEF only (Azure Log Analytics workspace)
+    workspace_id: "{{ workspace_id | default('') }}"
+    primary_key: "{{ primary_key | default('') }}"
+    # Script on controller: playbook_dir/../bootstrap-syslog-enhanced.sh (override if needed)
+    bootstrap_script_src: "{{ playbook_dir }}/../bootstrap-syslog-enhanced.sh"
+    # Where to install script on targets
+    bootstrap_script_dest: /usr/local/bin/bootstrap-syslog-enhanced.sh
+    bootstrap_log_file: /var/log/bootstrap-syslog-enhanced.log
+    # Cleanup / cron tuning (optional; match script env vars)
+    disk_threshold_percent: "{{ disk_threshold_percent | default(85) }}"
+    keep_kernels: "{{ keep_kernels | default(2) }}"
+    cleanup_days_ago: "{{ cleanup_days_ago | default(7) }}"
+    cleanup_days_log: "{{ cleanup_days_log | default(3) }}"
+    cleanup_large_mb: "{{ cleanup_large_mb | default(100) }}"
+    cleanup_docker: "{{ cleanup_docker | default(0) }}"
+    # Set installonly_limit in dnf.conf on RPM hosts (prevents /boot filling)
+    dnf_installonly_limit: "{{ dnf_installonly_limit | default(2) }}"
+
+  tasks:
+    - name: Deploy bootstrap-syslog-enhanced.sh
+      ansible.builtin.copy:
+        src: "{{ bootstrap_script_src }}"
+        dest: "{{ bootstrap_script_dest }}"
+        mode: "0755"
+        force: true
+      register: script_deployed
+
+    - name: Set installonly_limit in dnf.conf (RPM; prevent /boot full)
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/dnf.conf
+        regexp: '^\s*installonly_limit\s*='
+        line: "installonly_limit={{ dnf_installonly_limit }}"
+        insertafter: '^\[main\]'
+        insertbefore: '^\['
+      when:
+        - ansible_os_family == "RedHat"
+        - ansible_facts.get('os_family') is defined
+
+    - name: Ensure cron service name (Debian vs RPM)
+      ansible.builtin.set_fact:
+        cron_service: "{{ 'cron' if (ansible_os_family == 'Debian') else 'crond' }}"
+      when: ansible_os_family is defined
+
+    - name: Enable and start cron
+      ansible.builtin.service:
+        name: "{{ cron_service }}"
+        state: started
+        enabled: true
+      when:
+        - cron_service is defined
+        - cron_service | length > 0
+
+    - name: Fail when CEF requested but credentials missing
+      ansible.builtin.fail:
+        msg: "collector_type=cef requires workspace_id and primary_key (or use -e / vault)."
+      when:
+        - collector_type == 'cef'
+        - (workspace_id | default('') | length == 0) or (primary_key | default('') | length == 0)
+
+    - name: Run bootstrap (AMA forwarder)
+      ansible.builtin.command:
+        cmd: "{{ bootstrap_script_dest }} --ama"
+      environment:
+        LOG_FILE: "{{ bootstrap_log_file }}"
+        DISK_THRESHOLD_PERCENT: "{{ disk_threshold_percent }}"
+        KEEP_KERNELS: "{{ keep_kernels }}"
+        CLEANUP_DAYS_AGO: "{{ cleanup_days_ago }}"
+        CLEANUP_DAYS_LOG: "{{ cleanup_days_log }}"
+        CLEANUP_LARGE_MB: "{{ cleanup_large_mb }}"
+        CLEANUP_DOCKER: "{{ cleanup_docker }}"
+      when: collector_type == 'ama'
+      register: bootstrap_run
+      changed_when: bootstrap_run.rc == 0
+
+    - name: Run bootstrap (CEF collector)
+      ansible.builtin.command:
+        cmd: "{{ bootstrap_script_dest }} --cef"
+      environment:
+        WORKSPACE_ID: "{{ workspace_id }}"
+        PRIMARY_KEY: "{{ primary_key }}"
+        LOG_FILE: "{{ bootstrap_log_file }}"
+        DISK_THRESHOLD_PERCENT: "{{ disk_threshold_percent }}"
+        KEEP_KERNELS: "{{ keep_kernels }}"
+        CLEANUP_DAYS_AGO: "{{ cleanup_days_ago }}"
+        CLEANUP_DAYS_LOG: "{{ cleanup_days_log }}"
+        CLEANUP_LARGE_MB: "{{ cleanup_large_mb }}"
+        CLEANUP_DOCKER: "{{ cleanup_docker }}"
+      when:
+        - collector_type == 'cef'
+        - workspace_id | length > 0
+        - primary_key | length > 0
+      register: bootstrap_run
+      changed_when: bootstrap_run.rc == 0
+
+  # Optional: manage crons via Ansible (source of truth) instead of script
+  # Uncomment and adjust if you prefer cron module over script-managed crontab
+  #  post_tasks:
+  #    - name: Cron - daily disk cleanup
+  #      ansible.builtin.cron:
+  #        name: "bootstrap-syslog disk cleanup"
+  #        minute: "0"
+  #        hour: "2"
+  #        job: "{{ bootstrap_script_dest }} --disk-cleanup >> {{ bootstrap_log_file }} 2>&1"
+  #        user: root
+  #    - name: Cron - emergency fail-safe every 6h
+  #      ansible.builtin.cron:
+  #        name: "bootstrap-syslog emergency"
+  #        minute: "30"
+  #        hour: "*/6"
+  #        job: "{{ bootstrap_script_dest }} --emergency >> {{ bootstrap_log_file }} 2>&1"
+  #        user: root

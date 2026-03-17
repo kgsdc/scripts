@@ -1,40 +1,59 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Define function to log messages
+# Script Name: install_mdatp.sh
+# Description: Standalone script that installs Microsoft Defender for Endpoint (mdatp) on Ubuntu.
+#              Adds Microsoft package signing key and repository, installs mdatp, and enables the daemon.
+#
+# Usage: Run as root. Example: ./install_mdatp.sh
+
+set -euo pipefail
+
+# -----------------------------------------------------------------------------
+# Standalone helpers (no dependency on lib/)
+# -----------------------------------------------------------------------------
+
 log() {
-    echo "[$(date +'%Y-%m-%dT%H:%M:%S%z')]: $*"
+    local level="[INFO]"
+    local message=""
+    case "${1:-}" in
+        -i|--info)  level="[INFO]";  message="${*:2}" ;;
+        -w|--warn)  level="[WARN]";  message="${*:2}" ;;
+        -e|--error) level="[ERROR]"; message="${*:2}" ;;
+        *)          level="[INFO]";  message="$*" ;;
+    esac
+    echo "$(date +'%Y-%m-%d %H:%M:%S') $level - $message"
 }
 
-# Check for root privileges
-if [ "$(id -u)" != "0" ]; then
-   log "This script must be run as root" 1>&2
-   exit 1
-fi
+require_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        echo "This script must be run as root" 1>&2
+        exit 1
+    fi
+}
 
-# Add Microsoft's package signing key to your list of trusted keys
-wget -qO - https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+# -----------------------------------------------------------------------------
+# Main
+# -----------------------------------------------------------------------------
 
-# Automatically determine Ubuntu version and add the package repository
-UBUNTU_VERSION=$(lsb_release -rs)
-REPO_URL="https://packages.microsoft.com/config/ubuntu/$UBUNTU_VERSION/prod.list"
+main() {
+    require_root
 
-wget -qO - $REPO_URL | sudo tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
+    local ubuntu_version repo_url
+    ubuntu_version=$(lsb_release -rs)
+    repo_url="https://packages.microsoft.com/config/ubuntu/${ubuntu_version}/prod.list"
 
-if [ $? -ne 0 ]; then
-    log "Failed to add repository for Ubuntu version $UBUNTU_VERSION"
-    exit 1
-else
-    log "Repository for Ubuntu version $UBUNTU_VERSION added successfully"
-fi
+    log --info "Adding Microsoft package signing key and repository for Ubuntu ${ubuntu_version}."
+    wget -qO - https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+    wget -qO - "$repo_url" | tee /etc/apt/sources.list.d/microsoft-prod.list > /dev/null
 
-# Update the package list
-sudo apt-get update
+    log --info "Updating package list and installing Microsoft Defender for Endpoint."
+    apt-get update
+    apt-get install -y mdatp
 
-# Install Microsoft Defender for Endpoint
-sudo apt-get install -y mdatp
+    systemctl start mdatp
+    systemctl enable mdatp
 
-# Start the daemon
-sudo systemctl start mdatp
-sudo systemctl enable mdatp
+    log --info "Microsoft Defender for Endpoint installation and setup complete."
+}
 
-log "Microsoft Defender for Endpoint installation and setup complete."
+main "$@"
